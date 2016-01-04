@@ -1,69 +1,60 @@
 --scuba minetest 4.7
 
-local air = {}
-local w
-local t = 0
-local zid = -1
-local zid2
+local air   = {}
+local t     = 0
 local timer = 0
 
 local function scuba()
    local players = minetest.get_connected_players()
-   if #players == 0 then return end
-   for i=1,#players,1 do
-
-      local player = players[i]
-      local p      = player:get_player_name()
-      local zair   = 0
-      print("Scuba --> " .. p)
+   for i, player in ipairs(players) do
 
       --no tank in main inventory means no scuba patch
       local playerinv = minetest.get_inventory({type="player", name=player:get_player_name()})
       if playerinv:contains_item("main", "scuba:tankfull") then               
 
-	 for j=1,#air,1 do
-	    if air[j].pn == p then
-	       w=j
-	       zair = air[w].a
-	       break
-	    end
-	 end
+	 local pl_name = player:get_player_name()
+	 local pl_num  = -1
+	 print("Scuba --> " .. pl_name)
+
+	 local pl_air = air[pl_name]
+	 if pl_air == nil then break end
 
 	 if player:get_breath() < 10 then
-	    if zid == -1 then
-	       zid2 = player:hud_add( {
+	    if pl_air.zid == -1 then
+	       pl_air.zid2 = player:hud_add( {
 		     hud_elem_type = "image",
 		     position = {x=0.50,y=1},
-		     offset = {x=100, y=-93},
+		     offset = {x=25, y=-95},
 		     name = "scuba air gauge bg",
 		     text = "psibar.png",
 		     alignment = {x=1,y=-1},
 		     scale = {x=1, y=1},
 	       } )
 	       
-	       zid = player:hud_add( {
+	       pl_air.zid = player:hud_add( {
 		     hud_elem_type = "statbar",
 		     position = {x=0.50,y=1},
-		     offset = {x=100, y=-88},
+		     offset = {x=25, y=-110},
 		     name = "scuba air gauge",
 		     text = "psi.png",
-		     number = zair,
+		     number = pl_air.a,
 		     alignment = {x=1,y=-1},
 		     scale = {x=1, y=1},
 	       } )
 	    else -- if zid
-	       	       player:hud_change(zid, "number", zair)
+	       player:hud_change(pl_air.zid, "number", pl_air.a)
 	    end -- if zid
-	    zair = zair - 1
-	    air[w].a = zair 
-	    if zair > 0 then player:set_breath(9) end
+
+	    pl_air.a = pl_air.a - 1 
+	    if pl_air.a > 0 then player:set_breath(9) end
+
 	 else -- player:get_breath()
-	    if zid ~= -1 then
-	       player:hud_remove(zid)
-	       player:hud_remove(zid2)
-	       zid = -1
+	    if pl_air.zid ~= -1 then
+	       player:hud_remove(pl_air.zid)
+	       player:hud_remove(pl_air.zid2)
+	       pl_air.zid = -1
 	    end
-	 end --player:get_breath()
+	 end -- player:get_breath()
       end -- tank in main inventory patch
    end --for players
 end
@@ -79,15 +70,10 @@ end) --function
 
 minetest.register_on_joinplayer(function(player)
       local p = player:get_player_name()
-      local f = 0
-      for j=1,#air,1 do
-	 if air[j].pn == p then
-	    f = 1
-	    break
-	 end --if
-      end --for
-      if f == 0 then
-	 table.insert(air,{pn=p,a=100})
+      local pl_air = air[p]
+      if pl_air == nil then
+	 air[p] = {a = 100, zid = -1}
+	 print("Scuba --> " .. p .. " joins")
       end --if
 end) --function
 
@@ -121,12 +107,10 @@ minetest.register_craftitem("scuba:tankfull", {
 			       groups = {airtank=1,fulltank=1},
 			       on_use = function(itemstack, user, pointed_thing)
 				  local p = user:get_player_name()
-				  for j=1,#air,1 do
-				     if air[j].pn == p then
-					air[j].a=100
-					break
-				     end --if
-				  end --for
+				  if air[p] then
+				     air[p].a=100
+				     print("Scuba --> " .. p .. " refills")
+				  end
 				  --tank is now used -- hacky inv swap to tankempty
 				  local fakestack = ItemStack("scuba:tankempty")
 				  return fakestack

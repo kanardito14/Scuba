@@ -16,12 +16,13 @@ local function scuba()
       local meta      = nil
       local tank      = nil
       local tankidx   = 0
+      local pl_air    = air[pl_name]
 
       for i = 1, 8 do
 	 if inventory[i]:get_name() == "scuba:tankfull" then
 	    print ("Scuba --> Found tank on ", pl_name, "slot", i)
 	    meta = minetest.deserialize(inventory[i]:get_metadata())
-	    if meta ~= nil and meta.air ~= nil  and meta.air > 0 then
+	    if meta ~= nil and meta.air ~= nil and meta.air > 0 then
 	       tank    = inventory[i]
 	       tankidx = i
 	       print ("Scuba --> metadata.air", meta.air)
@@ -32,9 +33,16 @@ local function scuba()
 	 end
       end
 
+      if tank == nil or player:get_breath() >= 10 then	  
+	 if pl_air ~= nil and pl_air.zid ~= -1 then
+	    player:hud_remove(pl_air.zid)
+	    player:hud_remove(pl_air.zid2)
+	    pl_air.zid = -1
+	 end
+      end
+      
       if tank ~= nil then
 	 
-	 local pl_air = air[pl_name]
 	 if pl_air == nil then break end
 	 
 	 if player:get_breath() < 10 then
@@ -67,16 +75,17 @@ local function scuba()
 	    meta.air = meta.air - 1 
 	    tank:set_metadata(minetest.serialize(meta))
 	    playerinv:set_stack("main", tankidx, tank)	       
-	    
-	 else -- player:get_breath()
-	    if pl_air.zid ~= -1 then
-	       player:hud_remove(pl_air.zid)
-	       player:hud_remove(pl_air.zid2)
-	       pl_air.zid = -1
+	    if meta.air <= 0 then
+	       print ("Scuba --> TANK is now empty", meta.air)
+	       playerinv:set_stack("main", tankidx, ItemStack("scuba:tankempty"))
 	    end
+	    
 	 end -- player:get_breath()
+
       end -- if tank ~= nil
+
    end --for players
+
 end
 
 minetest.after(3, function()

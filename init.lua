@@ -1,7 +1,7 @@
---scuba minetest 4.7
+--scuba minetest 4.14
 
 local air   = {}
-local t     = 0
+--- local t     = 0
 local timer = 0
 
 local function scuba()
@@ -94,7 +94,7 @@ minetest.register_on_joinplayer(function(player)
       local p = player:get_player_name()
       local pl_air = air[p]
       if pl_air == nil then
-	 air[p] = {a = 100, zid = -1}
+	 air[p] = {zid = -1}
 	 print("Scuba --> " .. p .. " joins")
       end --if
 end) --function
@@ -130,8 +130,8 @@ minetest.register_craftitem("scuba:tankfull", {
 			       on_use = function(itemstack, user, pointed_thing)
 				  local p = user:get_player_name()
 				  if air[p] then
-				     air[p].a=100
-				     print("Scuba --> " .. p .. " refills")
+				     -- air[p].a=100
+				     print("Scuba --> " .. p .. " empties tank")
 				  end
 				  --tank is now used -- hacky inv swap to tankempty
 				  local fakestack = ItemStack("scuba:tankempty")
@@ -216,7 +216,8 @@ minetest.register_node("scuba:airfill", {
 				return 0
 			     end
 			  end,
-			  allow_metadata_inventory_move = function(pos, from_list, from_index,
+			  allow_metadata_inventory_move = function(pos,
+								   from_list, from_index,
 								   to_list, to_index,
 								   count, player)
 			     return 0
@@ -243,7 +244,8 @@ minetest.register_node("scuba:airfill_active", {
 								  stack, player)
 			     return 0
 			  end,
-			  allow_metadata_inventory_move = function(pos, from_list, from_index,
+			  allow_metadata_inventory_move = function(pos, from_list,
+								   from_index,
 								   to_list, to_index,
 								   count, player)
 			     return 0
@@ -289,7 +291,8 @@ minetest.register_abm({
 	 if cooked and cooked.item and not cooked.item:is_empty() then
 	    meta:set_string("infotext","Scuba Airfill Station in function")
 	    meta:set_float("src_time", meta:get_float("src_time") + 1)
-	    print ("Scuba --> cooked.time, src_time", cooked.time, meta:get_float("src_time"))
+	    print ("Scuba --> cooked.time, src_time", cooked.time,
+		   meta:get_float("src_time"))
 	    if meta:get_float("src_time") >= 10 * cooked.time then
 	       -- check if there's room for output in "dst" list
 	       if inv:room_for_item("dst",cooked.item) then

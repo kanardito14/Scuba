@@ -104,7 +104,7 @@ minetest.register_on_joinplayer(function(player)
       local pl_air = air[p]
       if pl_air == nil then
 	 air[p] = {zid = -1}
-	 print("Scuba --> " .. p .. " joins")
+	 minetest.log("action", "Scuba --> " .. p .. " joins")
       end --if
 end) --function
 
@@ -138,7 +138,7 @@ minetest.register_craftitem("scuba:tankfull", {
 			       groups = {airtank=1,fulltank=1},
 			       on_use = function(itemstack, user, pointed_thing)
 				  local p = user:get_player_name()
-				  print("Scuba --> " .. p .. " empties tank")
+				  minetest.log("action", "Scuba --> " .. p .. " empties tank")
 				  --tank is now used -- hacky inv swap to tankempty
 				  local fakestack = ItemStack("scuba:tankempty")
 				  return fakestack
@@ -205,9 +205,8 @@ minetest.register_node("scuba:airfill", {
 			  end,
 			  allow_metadata_inventory_put = function(pos, listname, index,
 								  stack, player)
-			     if stack:get_name() ~= "scuba:tankempty" then
-				return 0
-			     elseif listname == "src" then
+			     if stack:get_name() == "scuba:tankempty" or
+				stack:get_name() == "scuba:tankfull" then
 				return stack:get_count()
 			     else
 				return 0
@@ -233,32 +232,58 @@ minetest.register_abm({
 	 local srclist = inv:get_list("src")
 	 local cooked = nil
 	 local aftercooked
+	 local filling = false
+	 local airmeta = nil
+	 local airfinal = 0
 
-	 if srclist then
-	    cooked, aftercooked = minetest.get_craft_result({method = "cooking", width = 1,
-							     items = srclist})
+	 print ("Scuba --> ", srclist)
+
+	 if srclist[1]:get_name() == "scuba:tankempty" or
+	    srclist[1]:get_name() == "scuba:tankfull" then
+	       airmeta = minetest.deserialize(srclist[1]:get_metadata())
+	       if airmeta ~= nil and airmeta.air ~= nil and airmeta.air < 100 then
+		  filling = true
+	       end
 	 end
+
+--	 if srclist then
+--	    cooked, aftercooked = minetest.get_craft_result({method = "cooking", width = 1,
+--							     items = srclist})
+--	 end
 	 
-	 if cooked and cooked.item and not cooked.item:is_empty() then
+	 if filling then
 	    meta:set_string("infotext","Scuba Airfill Station in function")
-	    meta:set_float("src_time", meta:get_float("src_time") + 1)
-	    print ("Scuba --> cooked.time, src_time", cooked.time,
-		   meta:get_float("src_time"))
-	    if meta:get_float("src_time") >= cooked.time then
+
+	    airfinal = airmeta.air + 3
+	    if airfinal > 100 then airfinal = 100 end
+	    local meta2 = {air = airfinal}
+	    srclist[1]:set_metadata(minetest.serialize(meta2))
+	    minetest.log ("action",
+			  "Scuba --> filling tank" ..  srclist[1]:get_name() ..
+			     tostring(minetest.serialize(meta2)))
+	 end
+
+	 if srclist[1]:get_name() == "scuba:tankempty" or
+	    srclist[1]:get_name() == "scuba:tankfull" then
+	    
+	    airmeta = minetest.deserialize(srclist[1]:get_metadata())
+	    if airmeta ~= nil and airmeta.air ~= nil and airmeta.air == 100 then
+
 	       -- check if there's room for output in "dst" list
 	       if inv:room_for_item("dst",cooked.item) then
 		  -- Set meta information (tank capacity)
 		  local meta2 = {air = 100}
 		  cooked.item:set_metadata(minetest.serialize(meta2))
-		  print ("Scuba --> tank filled",
-			 cooked.item:get_name(),
-			 tostring(minetest.serialize(meta2)))
+		  minetest.log ("action",
+				"Scuba --> tank filled" ..  cooked.item:get_name() ..
+				   tostring(minetest.serialize(meta2)))
 		  -- Put result in "dst" list
 		  inv:add_item("dst", cooked.item)
                   -- take stuff from "src" list
 		  inv:set_stack("src", 1, aftercooked.items[1])
 	       else
-		  print("Could not insert '"..cooked.item:to_string().."'")
+		  minetest.log("error", "Scuba --> Could not insert '" ..
+				  cooked.item:to_string() .. "'")
 	       end
 	       meta:set_float("src_time", 0)
 	    end
